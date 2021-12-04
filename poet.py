@@ -114,7 +114,7 @@ Corpus is a compilation of the following Dr. Seuss stories, cleaned appropriatel
 def main():
     file = "Seuss.txt"
     sent = sample_sentence(file)
-    poem = generate_poem(file, 6, 5)
+    poem = generate_poem(file, 6, 6)
     for line in poem:
         print(line)
 
