@@ -9,6 +9,7 @@ from collections import defaultdict
 from nltk.tokenize import RegexpTokenizer
 import re
 import pronouncing
+import random
 
 def tokenize_sent(sent):
     tokens = []
@@ -37,8 +38,7 @@ def get_bigrams(text):
         for tup in bigram:
             print(tup)
 
-#Function inspired by tutorial from https://www.nltk.org/api/nltk.lm.html
-def sample_sentence(filename):
+def tokenize_text(filename):
     file = open(filename, 'r')
     text = file.read()
     text = text.replace("'", "")
@@ -53,15 +53,18 @@ def sample_sentence(filename):
     for sent in sents:
         words = tokenizer.tokenize(sent)
         for word in words:
-            if (len(pronouncing.phones_for_word(word)) == 0):
+            if not pronouncing.phones_for_word(word):
                 words.remove(word)
         tokens.append(words)
-    #print(tokens)
+    return tokens
 
+
+#Function inspired by tutorial from https://www.nltk.org/api/nltk.lm.html
+def sample_sentence(tokens):
     
     train, vocab = padded_everygram_pipeline(3, tokens)
 
-    lm = MLE(3)
+    lm = MLE(2)
     lm.fit(train, vocab)
 
     sent = []
@@ -81,95 +84,71 @@ def sample_sentence(filename):
         sent.append(cur)
     return sent
 
-def sent_len(filename, syl):
-    file = open(filename, 'r')
-    text = file.read()
-    text = text.replace("'", "")
-    text = text.replace('"', "")
-    text = text.lower()
-
-    sents = nltk.sent_tokenize(text)
-    tokenizer = RegexpTokenizer(r'\w+')
-    
-    
-    tokens = []
-    for sent in sents:
-        words = tokenizer.tokenize(sent)
-        for word in words:
-            if (len(pronouncing.phones_for_word(word)) == 0):
-                words.remove(word)
-        tokens.append(words)
-    #print(tokens)
-
+def sample_sentence_syl(tokens, syl):
     
     train, vocab = padded_everygram_pipeline(3, tokens)
 
-    lm = MLE(3)
+    lm = MLE(2)
     lm.fit(train, vocab)
 
     sent = []
     cur = "<s>"
     prev = "<s>"
     sent.append(cur)
-    syl_count = 0
-    while syllable_count(sent) < syl:
+    rands = [0,1,2,3]
+    loop = True
+    while loop:
         seed = [prev, cur]
         #print(seed)
-        nxt = lm.generate(1, text_seed = seed)
+        sent = lm.generate(syl - random.choice(rands), text_seed = seed)
         #if(nxt != '<s>' and nxt != '</s>'):
             #while(len(pronouncing.phones_for_word(nxt)) == 0):
                 #print(nxt)
                 #nxt = lm.generate(1, text_seed = seed)
-        if(nxt != "</s>" and syllable_count(sent) + syllable_count([nxt]) <= syl):
-            prev = cur
-            cur = nxt
-            sent.append(cur)
-    sent.append("</s>")
+        if(syllable_count(sent) == syl):
+            loop = False
     return sent
 
 def syllable_count(sent):
     count = 0
+    print(sent)
     for word in sent:
-        if word != '<s>' and word != '</s>':
+        if word != '<s>' and word != '</s>' and len(pronouncing.phones_for_word(word)) != 0:
             plist = pronouncing.phones_for_word(word)
             count += pronouncing.syllable_count(plist[0])
     return count
 
-def get_sent(file, syl, rhyme):
-    sent = sent_len(file, syl)
+def get_sent_just_rhyme(tokens, syl, rhyme):
+    sent = sample_sentence(tokens)
     if rhyme != "":
         while rhyme not in pronouncing.rhymes(sent[-2]):
-            sent = sent_len(file, syl)
-    return sent
-
-def get_sent_just_rhyme(file, syl, rhyme):
-    sent = sample_sentence(file)
-    if rhyme != "":
-        while rhyme not in pronouncing.rhymes(sent[-2]):
-            sent = sample_sentence(file)
+            sent = sample_sentence(tokens)
     return sent
 
 
-def generate_poem(file, syl, line):
+def generate_poem(tokens, syl, line):
     poem = []
     last = ["",""]
     for i in range(line):
-        cur = get_sent_just_rhyme(file, syl, last[-2])
+        cur = get_sent_just_rhyme(tokens, syl, last[-2])
         poem.append(cur)
         last = cur
     return poem
 
-def generate_haiku(file):
+def generate_haiku(tokens):
     haiku = []
-    first = sample_sentence(file)
-    second = sample_sentence(file)
-    third = sample_sentence(file)
+    first = sample_sentence_syl(tokens, 5)
+    second = sample_sentence_syl(tokens, 7)
+    third = sample_sentence_syl(tokens, 5)
     while(syllable_count(first) != 5):
-        first = sample_sentence(file)
+        print("getting new first")
+        first = sample_sentence_syl(tokens, 5)
     while(syllable_count(second) != 7):
-        second = sample_sentence(file)
+        print("getting new second")
+        second = sample_sentence_syl(tokens, 7)
     while(syllable_count(third) != 5):
-        third = sample_sentence(file)
+        print("getting new third")
+        third = sample_sentence_syl(tokens, 5)
     haiku.append(first)
     haiku.append(second)
     haiku.append(third)
@@ -197,10 +176,12 @@ Corpus is a compilation of the following Dr. Seuss stories, cleaned appropriatel
 """
 
 def main():
-    file = "Seuss.txt"
-    sent = sample_sentence(file)
-    poem = generate_haiku(file)
+    file = "Whitman.txt"
+    tokens = tokenize_text(file)
+    poem = generate_haiku(tokens)
     print_poem(poem)
+    #poem = generate_haiku(file)
+    #print_poem(poem)
 
 
     #for sent in sentences:
