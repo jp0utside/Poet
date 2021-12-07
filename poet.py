@@ -266,12 +266,10 @@ def poem_search_theme(lm, syl, lines, vec):
 def poem_search_theme_rhyme(lm, syl, lines, vec):
     poem = []
     scores = []
-    print("generating samples")
     samples = poem_search_syl(lm, syl, lines*3)
-    print("samples generated")
     poem.append(samples[0])
     for k in range(1, lines):
-        poem.append(k)
+        poem.append(samples[k])
         scores.append(sent_eval(poem[0], samples[k], vec))
     
     for i in range(lines, len(samples)):
