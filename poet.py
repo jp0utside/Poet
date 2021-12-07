@@ -10,6 +10,7 @@ from nltk.tokenize import RegexpTokenizer
 import re
 import pronouncing
 import random
+from collections import deque
 
 def tokenize_sent(sent):
     tokens = []
@@ -55,17 +56,14 @@ def tokenize_text(filename):
         for word in words:
             if not pronouncing.phones_for_word(word):
                 words.remove(word)
+            elif len(word) == 1 and word != "a" and word != "i":
+                words.remove(word)
         tokens.append(words)
     return tokens
 
 
 #Function inspired by tutorial from https://www.nltk.org/api/nltk.lm.html
-def sample_sentence(tokens):
-    
-    train, vocab = padded_everygram_pipeline(3, tokens)
-
-    lm = MLE(2)
-    lm.fit(train, vocab)
+def sample_sentence(lm):
 
     sent = []
     cur = "<s>"
@@ -84,12 +82,7 @@ def sample_sentence(tokens):
         sent.append(cur)
     return sent
 
-def sample_sentence_syl(tokens, syl):
-    
-    train, vocab = padded_everygram_pipeline(3, tokens)
-
-    lm = MLE(2)
-    lm.fit(train, vocab)
+def sample_sentence_syl(lm, syl):
 
     sent = []
     cur = "<s>"
@@ -99,61 +92,120 @@ def sample_sentence_syl(tokens, syl):
     loop = True
     while loop:
         seed = [prev, cur]
-        #print(seed)
         sent = lm.generate(syl - random.choice(rands), text_seed = seed)
-        #if(nxt != '<s>' and nxt != '</s>'):
-            #while(len(pronouncing.phones_for_word(nxt)) == 0):
-                #print(nxt)
-                #nxt = lm.generate(1, text_seed = seed)
         if(syllable_count(sent) == syl):
             loop = False
     return sent
 
 def syllable_count(sent):
     count = 0
-    print(sent)
     for word in sent:
         if word != '<s>' and word != '</s>' and len(pronouncing.phones_for_word(word)) != 0:
             plist = pronouncing.phones_for_word(word)
             count += pronouncing.syllable_count(plist[0])
     return count
 
-def get_sent_just_rhyme(tokens, syl, rhyme):
-    sent = sample_sentence(tokens)
+def get_sent(lm, syl, rhyme):
+    sent = sample_sentence(lm)
     if rhyme != "":
         while rhyme not in pronouncing.rhymes(sent[-2]):
-            sent = sample_sentence(tokens)
+            sent = sample_sentence(lm)
+            print(rhyme)
+            print(sent)
     return sent
 
 
-def generate_poem(tokens, syl, line):
+def generate_poem(lm, syl, line):
     poem = []
     last = ["",""]
     for i in range(line):
-        cur = get_sent_just_rhyme(tokens, syl, last[-2])
+        cur = get_sent(lm, syl, last[-2])
         poem.append(cur)
         last = cur
     return poem
 
-def generate_haiku(tokens):
+def generate_haiku(lm):
     haiku = []
-    first = sample_sentence_syl(tokens, 5)
-    second = sample_sentence_syl(tokens, 7)
-    third = sample_sentence_syl(tokens, 5)
+    first = sample_sentence_syl(lm, 5)
+    second = sample_sentence_syl(lm, 7)
+    third = sample_sentence_syl(lm, 5)
     while(syllable_count(first) != 5):
         print("getting new first")
-        first = sample_sentence_syl(tokens, 5)
+        first = sample_sentence_syl(lm, 5)
     while(syllable_count(second) != 7):
         print("getting new second")
-        second = sample_sentence_syl(tokens, 7)
+        second = sample_sentence_syl(lm, 7)
     while(syllable_count(third) != 5):
         print("getting new third")
-        third = sample_sentence_syl(tokens, 5)
+        third = sample_sentence_syl(lm, 5)
     haiku.append(first)
     haiku.append(second)
     haiku.append(third)
     return haiku
 
+def poem_search(lm, lines):
+    poems = [deque()]
+    poem = []
+    cont = True
+    while cont:
+        sent = sample_sentence(lm)
+        put = False
+        for i in poems:
+            if len(i) > 0:
+                if i[-1][-2] in pronouncing.rhymes(sent[-2]):
+                    pres = False
+                    put = True
+                    for j in i:
+                        if j[-2] == sent[-2]:
+                            pres = True
+                    if not pres:
+                        i.append(sent)
+                        print(i)
+                        if(len(i) == lines):
+                            poem = i
+                            cont = False
+        if not put:
+            q = deque()
+            q.append(sent)
+            poems.append(q)
+    return poem
+
+def poem_search_syl(lm, syl, lines):
+    poems = [deque()]
+    poem = []
+    cont = True
+    while cont:
+        sent = sample_sentence_syl(lm, syl)
+        while sent[-1] == "</s>" or sent[-1] =="<s>":
+            sent.pop()
+        put = False
+        for i in poems:
+            if len(i) > 0:
+                if i[-1][-1] in pronouncing.rhymes(sent[-1]):
+                    pres = False
+                    put = True
+                    for j in i:
+                        if j[-1] == sent[-1]:
+                            pres = True
+                    if not pres:
+                        i.append(sent)
+                        if(len(i) == lines):
+                            poem = i
+                            cont = False
+        if not put:
+            q = deque()
+            q.append(sent)
+            poems.append(q)
+    return poem
+
+def poem_search_syl_abab(lm, syl, lines):
+    poem = []
+    first = poem_search_syl(lm, syl, lines)
+    second = poem_search_syl(lm, syl, lines)
+    for i in range(len(first)):
+        poem.append(first[i])
+        poem.append(second[i])
+    return poem
     
 def print_poem(poem):
     string = ""
@@ -176,12 +228,14 @@ Corpus is a compilation of the following Dr. Seuss stories, cleaned appropriatel
 """
 
 def main():
-    file = "Whitman.txt"
+    file = "Seuss.txt"
     tokens = tokenize_text(file)
-    poem = generate_haiku(tokens)
+    train, vocab = padded_everygram_pipeline(3, tokens)
+    lm = MLE(3)
+    lm.fit(train, vocab)
+
+    poem = poem_search_syl_abab(lm, 5, 5)
     print_poem(poem)
-    #poem = generate_haiku(file)
-    #print_poem(poem)
 
 
     #for sent in sentences:
