@@ -11,6 +11,9 @@ import re
 import pronouncing
 import random
 from collections import deque
+import gensim
+from gensim.models import Word2Vec
+from nltk.corpus import stopwords
 
 def tokenize_sent(sent):
     tokens = []
@@ -59,6 +62,7 @@ def tokenize_text(filename):
             elif len(word) == 1 and word != "a" and word != "i":
                 words.remove(word)
         tokens.append(words)
+    file.close()
     return tokens
 
 
@@ -95,6 +99,18 @@ def sample_sentence_syl(lm, syl):
         sent = lm.generate(syl - random.choice(rands), text_seed = seed)
         if(syllable_count(sent) == syl):
             loop = False
+    return sent
+
+def sample_sentence_lim(lm, syl):
+
+    sent = []
+    cur = "<s>"
+    prev = "<s>"
+    sent.append(cur)
+    rands = [0,1,2,3]
+    loop = True
+    seed = [prev, cur]
+    sent = lm.generate(syl - random.choice(rands), text_seed = seed)
     return sent
 
 def syllable_count(sent):
@@ -170,6 +186,7 @@ def poem_search(lm, lines):
             poems.append(q)
     return poem
 
+
 def poem_search_syl(lm, syl, lines):
     poems = [deque()]
     poem = []
@@ -198,6 +215,29 @@ def poem_search_syl(lm, syl, lines):
             poems.append(q)
     return poem
 
+def poem_search_syl_reprhyme(lm, syl, lines):
+    poems = [deque()]
+    poem = []
+    cont = True
+    while cont:
+        sent = sample_sentence_syl(lm, syl)
+        while sent[-1] == "</s>" or sent[-1] =="<s>":
+            sent.pop()
+        put = False
+        for i in poems:
+            if len(i) > 0:
+                if i[-1][-1] in pronouncing.rhymes(sent[-1]):
+                    put = True
+                    i.append(sent)
+                    if(len(i) == lines):
+                        poem = i
+                        cont = False
+        if not put:
+            q = deque()
+            q.append(sent)
+            poems.append(q)
+    return poem
+
 def poem_search_syl_abab(lm, syl, lines):
     poem = []
     first = poem_search_syl(lm, syl, lines)
@@ -206,6 +246,64 @@ def poem_search_syl_abab(lm, syl, lines):
         poem.append(first[i])
         poem.append(second[i])
     return poem
+
+def poem_search_theme(lm, syl, lines, vec):
+    poem = []
+    first = sample_sentence_lim(lm, syl)
+    poem.append(first)
+    for i in range(lines):
+        best = []
+        score = 0
+        for j in range(100):
+            candidate = sample_sentence_lim(lm, syl)
+            c_score = sent_eval(poem[-1], candidate, vec)
+            if c_score > score:
+                best = candidate
+                score = c_score
+        poem.append(best)
+    return poem
+
+def poem_search_theme_rhyme(lm, syl, lines, vec):
+    poem = []
+    scores = []
+    print("generating samples")
+    samples = poem_search_syl(lm, syl, lines*3)
+    print("samples generated")
+    poem.append(samples[0])
+    for k in range(1, lines):
+        poem.append(k)
+        scores.append(sent_eval(poem[0], samples[k], vec))
+    
+    for i in range(lines, len(samples)):
+        print("i: " + str(i))
+        candidate = samples[i]
+        c_score = sent_eval(poem[0], candidate, vec)
+        for j in range(len(scores)):
+            if c_score > scores[j]:
+                scores[j] = c_score
+                poem[j+1] = candidate
+                break
+    return poem
+
+def sent_eval(first, second, vector_model):
+    tot = 0
+    count = 0
+    for f in first:
+        if f in vector_model.wv.index_to_key:
+            for s in second:
+                if s in vector_model.wv.index_to_key:
+                    count += 1
+                    tot += vector_model.wv.similarity(f, s)
+                    #print(f)
+                    #print(s)
+                    #print(vector_model.wv.similarity(f, s))
+    if tot == 0 or count == 0:
+        avg = float('-inf')
+    else:
+        avg = tot/count
+    #print()
+    #print()
+    return avg
     
 def print_poem(poem):
     string = ""
@@ -228,14 +326,45 @@ Corpus is a compilation of the following Dr. Seuss stories, cleaned appropriatel
 """
 
 def main():
-    file = "Seuss.txt"
-    tokens = tokenize_text(file)
-    train, vocab = padded_everygram_pipeline(3, tokens)
+    file = "Whitman.txt"
+    sent_tokens = tokenize_text(file)
+    train, vocab = padded_everygram_pipeline(3, sent_tokens)
+    #print("Training LM")
     lm = MLE(3)
     lm.fit(train, vocab)
+    #print("LM Trained")
 
-    poem = poem_search_syl_abab(lm, 5, 5)
+    #print("Tokenizing words, removing stopwords")
+    stop_words = set(stopwords.words('english'))
+    word_tokens = []
+    filtered_tokens = []
+    for sent in sent_tokens:
+        new_sent = []
+        for word in sent:
+            word_tokens.append(word)
+            if word not in stop_words:
+                new_sent.append(word)
+            filtered_tokens.append(new_sent)
+    #print("Tokenizing complete")
+    
+    """
+    fdist = nltk.FreqDist()
+    for word in word_tokens:
+        fdist[word] += 1
+    """
+
+    #print("Training vector model")
+    #vector_model = gensim.models.Word2Vec(filtered_tokens, min_count = 5)
+    #vector_model.save("w2v_nostop.model")
+    vector_model = Word2Vec.load("w2v_nostop.model")
+    #print("Vector model trained")
+
+    poem = poem_search_theme_rhyme(lm, 12, 5, vector_model)
+    print(poem)
     print_poem(poem)
+
+    #poem = poem_search_syl_abab(lm, 5, 5)
+    #print_poem(poem)
 
 
     #for sent in sentences:
