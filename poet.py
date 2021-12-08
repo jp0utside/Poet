@@ -17,32 +17,6 @@ from gensim.models import Word2Vec
 from nltk.corpus import stopwords
 import datetime
 
-def tokenize_sent(sent):
-    tokens = []
-    sents = nltk.sent_tokenize(text)
-    tokenizer = RegexpTokenizer(r'\w+')
-    for sent in sents:
-        temp = tokenizer.tokenize(sent)
-        temp.insert(0, "<s>")
-        temp.append("</s>")
-        tokens.append(temp)
-    
-    return tokens
-
-#Originally designed for Dr. Seuss corpus
-def get_bigrams(text):
-    bigrams = []
-    tokenizer = RegexpTokenizer(r'\w+')
-    sents = nltk.sent_tokenize(text)
-    for sent in sents:
-        print(sent)
-        words = tokenizer.tokenize(sent)
-        print(words)
-        padded = nltk.bigrams(pad_both_ends(words, n=2))
-        bigrams.append(padded)
-    for bigram in bigrams:
-        for tup in bigram:
-            print(tup)
 
 def tokenize_text(filename):
     file = open(filename, 'r')
@@ -80,29 +54,21 @@ def clean_sents(sents):
     return new_sents
     
 
-
 #Function inspired by tutorial from https://www.nltk.org/api/nltk.lm.html
 def sample_sentence(lm):
-
     sent = []
     cur = "<s>"
     prev = "<s>"
     sent.append(cur)
     while cur != "</s>":
         seed = [prev, cur]
-        #print(seed)
         nxt = lm.generate(1, text_seed = seed)
-        #if(nxt != '<s>' and nxt != '</s>'):
-            #while(len(pronouncing.phones_for_word(nxt)) == 0):
-                #print(nxt)
-                #nxt = lm.generate(1, text_seed = seed)
         prev = cur
         cur = nxt
         sent.append(cur)
     return sent
 
 def sample_sentence_syl(lm, syl):
-
     sent = []
     cur = "<s>"
     prev = "<s>"
@@ -117,7 +83,6 @@ def sample_sentence_syl(lm, syl):
     return sent
 
 def sample_sentence_lim(lm, syl):
-
     sent = []
     cur = "<s>"
     prev = "<s>"
@@ -136,38 +101,16 @@ def syllable_count(sent):
             count += pronouncing.syllable_count(plist[0])
     return count
 
-def get_sent(lm, syl, rhyme):
-    sent = sample_sentence(lm)
-    if rhyme != "":
-        while rhyme not in pronouncing.rhymes(sent[-2]):
-            sent = sample_sentence(lm)
-            print(rhyme)
-            print(sent)
-    return sent
-
-
-def generate_poem(lm, syl, line):
-    poem = []
-    last = ["",""]
-    for i in range(line):
-        cur = get_sent(lm, syl, last[-2])
-        poem.append(cur)
-        last = cur
-    return poem
-
-def generate_haiku(lm):
+def haiku(lm):
     haiku = []
     first = sample_sentence_syl(lm, 5)
     second = sample_sentence_syl(lm, 7)
     third = sample_sentence_syl(lm, 5)
     while(syllable_count(first) != 5):
-        print("getting new first")
         first = sample_sentence_syl(lm, 5)
     while(syllable_count(second) != 7):
-        print("getting new second")
         second = sample_sentence_syl(lm, 7)
     while(syllable_count(third) != 5):
-        print("getting new third")
         third = sample_sentence_syl(lm, 5)
     haiku.append(first)
     haiku.append(second)
@@ -191,7 +134,6 @@ def poem_search(lm, lines):
                             pres = True
                     if not pres:
                         i.append(sent)
-                        print(i)
                         if(len(i) == lines):
                             poem = i
                             cont = False
@@ -288,7 +230,6 @@ def poem_search_theme_rhyme(lm, syl, lines, vec):
         scores.append(sent_eval(poem[0], samples[k], vec))
     
     for i in range(lines, len(samples)):
-        print("i: " + str(i))
         candidate = samples[i]
         c_score = sent_eval(poem[0], candidate, vec)
         for j in range(len(scores)):
@@ -307,15 +248,10 @@ def sent_eval(first, second, vector_model):
                 if s in vector_model.wv.index_to_key:
                     count += 1
                     tot += vector_model.wv.similarity(f, s)
-                    #print(f)
-                    #print(s)
-                    #print(vector_model.wv.similarity(f, s))
     if tot == 0 or count == 0:
         avg = float('-inf')
     else:
         avg = tot/count
-    #print()
-    #print()
     return avg
     
 def print_poem(poem):
@@ -341,20 +277,14 @@ Corpus is a compilation of the following Dr. Seuss stories, cleaned appropriatel
 def main():
     start_time = datetime.datetime.now()
     print(start_time)
-    """
     file = "Whitman.txt"
     sent_tokens = tokenize_text(file)
-    """
-    print(brown.sents(categories = "news"))
-    sent_tokens = clean_sents(brown.sents(categories = "news"))
-    print(sent_tokens)
+    #sent_tokens = clean_sents(brown.sents(categories = "news"))
+
     train, vocab = padded_everygram_pipeline(3, sent_tokens)
-    #print("Training LM")
     lm = MLE(3)
     lm.fit(train, vocab)
-    #print("LM Trained")
 
-    #print("Tokenizing words, removing stopwords")
     stop_words = set(stopwords.words('english'))
     word_tokens = []
     filtered_tokens = []
@@ -365,28 +295,23 @@ def main():
             if word not in stop_words:
                 new_sent.append(word)
             filtered_tokens.append(new_sent)
-    #print("Tokenizing complete")
     
-    """
-    fdist = nltk.FreqDist()
-    for word in word_tokens:
-        fdist[word] += 1
-    """
 
-    #print("Training vector model")
     #vector_model = gensim.models.Word2Vec(filtered_tokens, min_count = 5)
-    #vector_model.save("w2v_nostop.model")
+    #vector_model.save("w2v_whitman.model")
     vector_model = Word2Vec.load("w2v_whitman.model")
-    #print("Vector model trained")
 
-    poem = poem_search_syl(lm, 10, 5)
-    print_poem(poem)
-
+    print_poem(haiku(lm))
+    print()
+    print_poem(poem_search(lm, 5))
+    print()
+    print_poem(poem_search_syl(lm, 10, 5))
+    print()
+    print_poem(poem_search_syl_abab(lm, 10, 2))
+    print()
+    print_poem(poem_search_theme(lm, 10, 5, vector_model))
+    print()
+    print_poem(poem_search_theme_rhyme(lm, 10, 3, vector_model))
+    print()
     print(datetime.datetime.now() - start_time)
-    #poem = poem_search_syl_abab(lm, 5, 5)
-    #print_poem(poem)
-
-
-    #for sent in sentences:
-        #print(sent)
 if __name__ == "__main__": main()
