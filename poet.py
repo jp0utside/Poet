@@ -93,6 +93,7 @@ def sample_sentence_lim(lm, syl):
     sent = lm.generate(syl - random.choice(rands), text_seed = seed)
     return sent
 
+
 def syllable_count(sent):
     count = 0
     for word in sent:
@@ -101,6 +102,9 @@ def syllable_count(sent):
             count += pronouncing.syllable_count(plist[0])
     return count
 
+"""
+Function to generate a haiku.
+"""
 def haiku(lm):
     haiku = []
     first = sample_sentence_syl(lm, 5)
@@ -117,6 +121,10 @@ def haiku(lm):
     haiku.append(third)
     return haiku
 
+"""
+Function to generate a poem with an inputted amount of lines and lines that rhyme, not allowing lines to end with
+the same word.
+"""
 def poem_search(lm, lines):
     poems = [deque()]
     poem = []
@@ -143,7 +151,11 @@ def poem_search(lm, lines):
             poems.append(q)
     return poem
 
-
+"""
+Function to generate a poem with an inputted amount of syllables per line,
+an inputted amount of lines, and lines that rhyme, not allowing lines to end with
+the same word.
+"""
 def poem_search_syl(lm, syl, lines):
     poems = [deque()]
     poem = []
@@ -172,6 +184,11 @@ def poem_search_syl(lm, syl, lines):
             poems.append(q)
     return poem
 
+"""
+Function to generate a poem with an inputted amount of syllables per line,
+an inputted amount of lines, and lines that rhyme, allowing for lines to end with
+the same word.
+"""
 def poem_search_syl_reprhyme(lm, syl, lines):
     poems = [deque()]
     poem = []
@@ -195,6 +212,10 @@ def poem_search_syl_reprhyme(lm, syl, lines):
             poems.append(q)
     return poem
 
+"""
+Function to generate a poem with an inputted amount of syllables per line,
+an inputted amount of lines, and an ABAB rhyming scheme.
+"""
 def poem_search_syl_abab(lm, syl, lines):
     poem = []
     first = poem_search_syl(lm, syl, lines)
@@ -204,6 +225,10 @@ def poem_search_syl_abab(lm, syl, lines):
         poem.append(second[i])
     return poem
 
+"""
+Function to generate a poem with a common theme, an inputted amount of syllables per line,
+and an inputted amount of lines.
+"""
 def poem_search_theme(lm, syl, lines, vec):
     poem = []
     first = sample_sentence_lim(lm, syl)
@@ -220,6 +245,10 @@ def poem_search_theme(lm, syl, lines, vec):
         poem.append(best)
     return poem
 
+"""
+Function to generate a poem with a common theme, rhyming lines,
+and a certain amount of syllables and lines.
+"""
 def poem_search_theme_rhyme(lm, syl, lines, vec):
     poem = []
     scores = []
@@ -239,6 +268,9 @@ def poem_search_theme_rhyme(lm, syl, lines, vec):
                 break
     return poem
 
+"""
+Function to evaluate word to vector model similarity between each word in the two input strings.
+"""
 def sent_eval(first, second, vector_model):
     tot = 0
     count = 0
@@ -253,7 +285,10 @@ def sent_eval(first, second, vector_model):
     else:
         avg = tot/count
     return avg
-    
+
+"""
+Function to take in array of lines, ignore start and end chars, and print lines like a sentence.
+"""
 def print_poem(poem):
     string = ""
     for line in poem:
