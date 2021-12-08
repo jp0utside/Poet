@@ -1,4 +1,5 @@
 import nltk
+from nltk.corpus import brown
 from nltk.util import pad_sequence
 from nltk.util import bigrams
 from nltk.lm.preprocessing import padded_everygram_pipeline
@@ -14,6 +15,7 @@ from collections import deque
 import gensim
 from gensim.models import Word2Vec
 from nltk.corpus import stopwords
+import datetime
 
 def tokenize_sent(sent):
     tokens = []
@@ -64,6 +66,19 @@ def tokenize_text(filename):
         tokens.append(words)
     file.close()
     return tokens
+
+def clean_sents(sents):
+    new_sents = []
+    for sent in sents:
+        news = []
+        for word in sent:
+            new = word.lower()
+            new.replace("'", "")
+            new.replace('"', "")
+            news.append(new)
+        new_sents.append(news)
+    return new_sents
+    
 
 
 #Function inspired by tutorial from https://www.nltk.org/api/nltk.lm.html
@@ -324,8 +339,15 @@ Corpus is a compilation of the following Dr. Seuss stories, cleaned appropriatel
 """
 
 def main():
+    start_time = datetime.datetime.now()
+    print(start_time)
+    """
     file = "Whitman.txt"
     sent_tokens = tokenize_text(file)
+    """
+    print(brown.sents(categories = "news"))
+    sent_tokens = clean_sents(brown.sents(categories = "news"))
+    print(sent_tokens)
     train, vocab = padded_everygram_pipeline(3, sent_tokens)
     #print("Training LM")
     lm = MLE(3)
@@ -354,13 +376,13 @@ def main():
     #print("Training vector model")
     #vector_model = gensim.models.Word2Vec(filtered_tokens, min_count = 5)
     #vector_model.save("w2v_nostop.model")
-    vector_model = Word2Vec.load("w2v_nostop.model")
+    vector_model = Word2Vec.load("w2v_whitman.model")
     #print("Vector model trained")
 
-    poem = poem_search_theme_rhyme(lm, 12, 5, vector_model)
-    print(poem)
+    poem = poem_search_syl(lm, 10, 5)
     print_poem(poem)
 
+    print(datetime.datetime.now() - start_time)
     #poem = poem_search_syl_abab(lm, 5, 5)
     #print_poem(poem)
 
