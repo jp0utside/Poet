@@ -27,8 +27,7 @@ def tokenize_text(filename):
 
     sents = nltk.sent_tokenize(text)
     tokenizer = RegexpTokenizer(r'\w+')
-    
-    
+
     tokens = []
     for sent in sents:
         words = tokenizer.tokenize(sent)
@@ -41,6 +40,7 @@ def tokenize_text(filename):
     file.close()
     return tokens
 
+
 def clean_sents(sents):
     new_sents = []
     for sent in sents:
@@ -52,9 +52,9 @@ def clean_sents(sents):
             news.append(new)
         new_sents.append(news)
     return new_sents
-    
 
-#Function inspired by tutorial from https://www.nltk.org/api/nltk.lm.html
+
+# Function inspired by tutorial from https://www.nltk.org/api/nltk.lm.html
 def sample_sentence(lm):
     sent = []
     cur = "<s>"
@@ -62,35 +62,37 @@ def sample_sentence(lm):
     sent.append(cur)
     while cur != "</s>":
         seed = [prev, cur]
-        nxt = lm.generate(1, text_seed = seed)
+        nxt = lm.generate(1, text_seed=seed)
         prev = cur
         cur = nxt
         sent.append(cur)
     return sent
+
 
 def sample_sentence_syl(lm, syl):
     sent = []
     cur = "<s>"
     prev = "<s>"
     sent.append(cur)
-    rands = [0,1,2,3]
+    rands = [0, 1, 2, 3]
     loop = True
     while loop:
         seed = [prev, cur]
-        sent = lm.generate(syl - random.choice(rands), text_seed = seed)
-        if(syllable_count(sent) == syl):
+        sent = lm.generate(syl - random.choice(rands), text_seed=seed)
+        if (syllable_count(sent) == syl):
             loop = False
     return sent
+
 
 def sample_sentence_lim(lm, syl):
     sent = []
     cur = "<s>"
     prev = "<s>"
     sent.append(cur)
-    rands = [0,1,2,3]
+    rands = [0, 1, 2, 3]
     loop = True
     seed = [prev, cur]
-    sent = lm.generate(syl - random.choice(rands), text_seed = seed)
+    sent = lm.generate(syl - random.choice(rands), text_seed=seed)
     return sent
 
 
@@ -102,29 +104,35 @@ def syllable_count(sent):
             count += pronouncing.syllable_count(plist[0])
     return count
 
+
 """
 Function to generate a haiku.
 """
+
+
 def haiku(lm):
     haiku = []
     first = sample_sentence_syl(lm, 5)
     second = sample_sentence_syl(lm, 7)
     third = sample_sentence_syl(lm, 5)
-    while(syllable_count(first) != 5):
+    while (syllable_count(first) != 5):
         first = sample_sentence_syl(lm, 5)
-    while(syllable_count(second) != 7):
+    while (syllable_count(second) != 7):
         second = sample_sentence_syl(lm, 7)
-    while(syllable_count(third) != 5):
+    while (syllable_count(third) != 5):
         third = sample_sentence_syl(lm, 5)
     haiku.append(first)
     haiku.append(second)
     haiku.append(third)
     return haiku
 
+
 """
 Function to generate a poem with an inputted amount of lines and lines that rhyme, not allowing lines to end with
 the same word.
 """
+
+
 def poem_search(lm, lines):
     poems = [deque()]
     poem = []
@@ -142,7 +150,7 @@ def poem_search(lm, lines):
                             pres = True
                     if not pres:
                         i.append(sent)
-                        if(len(i) == lines):
+                        if (len(i) == lines):
                             poem = i
                             cont = False
         if not put:
@@ -151,18 +159,21 @@ def poem_search(lm, lines):
             poems.append(q)
     return poem
 
+
 """
 Function to generate a poem with an inputted amount of syllables per line,
 an inputted amount of lines, and lines that rhyme, not allowing lines to end with
 the same word.
 """
+
+
 def poem_search_syl(lm, syl, lines):
     poems = [deque()]
     poem = []
     cont = True
     while cont:
         sent = sample_sentence_syl(lm, syl)
-        while sent[-1] == "</s>" or sent[-1] =="<s>":
+        while sent[-1] == "</s>" or sent[-1] == "<s>":
             sent.pop()
         put = False
         for i in poems:
@@ -175,7 +186,7 @@ def poem_search_syl(lm, syl, lines):
                             pres = True
                     if not pres:
                         i.append(sent)
-                        if(len(i) == lines):
+                        if (len(i) == lines):
                             poem = i
                             cont = False
         if not put:
@@ -184,18 +195,21 @@ def poem_search_syl(lm, syl, lines):
             poems.append(q)
     return poem
 
+
 """
 Function to generate a poem with an inputted amount of syllables per line,
 an inputted amount of lines, and lines that rhyme, allowing for lines to end with
 the same word.
 """
+
+
 def poem_search_syl_reprhyme(lm, syl, lines):
     poems = [deque()]
     poem = []
     cont = True
     while cont:
         sent = sample_sentence_syl(lm, syl)
-        while sent[-1] == "</s>" or sent[-1] =="<s>":
+        while sent[-1] == "</s>" or sent[-1] == "<s>":
             sent.pop()
         put = False
         for i in poems:
@@ -203,7 +217,7 @@ def poem_search_syl_reprhyme(lm, syl, lines):
                 if i[-1][-1] in pronouncing.rhymes(sent[-1]):
                     put = True
                     i.append(sent)
-                    if(len(i) == lines):
+                    if (len(i) == lines):
                         poem = i
                         cont = False
         if not put:
@@ -212,10 +226,13 @@ def poem_search_syl_reprhyme(lm, syl, lines):
             poems.append(q)
     return poem
 
+
 """
 Function to generate a poem with an inputted amount of syllables per line,
 an inputted amount of lines, and an ABAB rhyming scheme.
 """
+
+
 def poem_search_syl_abab(lm, syl, lines):
     poem = []
     first = poem_search_syl(lm, syl, lines)
@@ -225,10 +242,13 @@ def poem_search_syl_abab(lm, syl, lines):
         poem.append(second[i])
     return poem
 
+
 """
 Function to generate a poem with a common theme, an inputted amount of syllables per line,
 and an inputted amount of lines.
 """
+
+
 def poem_search_theme(lm, syl, lines, vec):
     poem = []
     first = sample_sentence_lim(lm, syl)
@@ -245,10 +265,13 @@ def poem_search_theme(lm, syl, lines, vec):
         poem.append(best)
     return poem
 
+
 """
 Function to generate a poem with a common theme, rhyming lines,
 and a certain amount of syllables and lines.
 """
+
+
 def poem_search_theme_rhyme(lm, syl, lines, vec):
     poem = []
     scores = []
@@ -257,7 +280,7 @@ def poem_search_theme_rhyme(lm, syl, lines, vec):
     for k in range(1, lines):
         poem.append(samples[k])
         scores.append(sent_eval(poem[0], samples[k], vec))
-    
+
     for i in range(lines, len(samples)):
         candidate = samples[i]
         c_score = sent_eval(poem[0], candidate, vec)
@@ -268,9 +291,12 @@ def poem_search_theme_rhyme(lm, syl, lines, vec):
                 break
     return poem
 
+
 """
 Function to evaluate word to vector model similarity between each word in the two input strings.
 """
+
+
 def sent_eval(first, second, vector_model):
     tot = 0
     count = 0
@@ -286,9 +312,12 @@ def sent_eval(first, second, vector_model):
         avg = tot/count
     return avg
 
+
 """
 Function to take in array of lines, ignore start and end chars, and print lines like a sentence.
 """
+
+
 def print_poem(poem):
     string = ""
     for line in poem:
@@ -297,7 +326,8 @@ def print_poem(poem):
                 string += word + " "
         print(string)
         string = ""
-    
+
+
 """
 Dr. Seuss corpus borrowed from Roberts Dionne GitHub https://github.com/robertsdionne
 Corpus is a compilation of the following Dr. Seuss stories, cleaned appropriately:
@@ -309,44 +339,94 @@ Corpus is a compilation of the following Dr. Seuss stories, cleaned appropriatel
     One Fish Two Fish
 """
 
-def main():
-    start_time = datetime.datetime.now()
-    print(start_time)
-    file = "Whitman.txt"
-    sent_tokens = tokenize_text(file)
-    #sent_tokens = clean_sents(brown.sents(categories = "news"))
 
+def main():
+    print("Hello, welcome to poetry generator! Please input the name of the file (in the same repository as this file) you want to use as the corpus to train the model on: ")
+
+    file = input()
+    sent_tokens = tokenize_text(file)
     train, vocab = padded_everygram_pipeline(3, sent_tokens)
     lm = MLE(3)
     lm.fit(train, vocab)
 
-    stop_words = set(stopwords.words('english'))
-    word_tokens = []
-    filtered_tokens = []
-    for sent in sent_tokens:
-        new_sent = []
-        for word in sent:
-            word_tokens.append(word)
-            if word not in stop_words:
-                new_sent.append(word)
-            filtered_tokens.append(new_sent)
-    
+    print("Great, now please choose from the following options by entering the number on its left: ")
+    print("1. Haiku")
+    print("2. Rhyming poem, specifying number of lines")
+    print("3. Rhyming poem, specifying number of lines and syllables per line")
+    print("4. Rhyming poem with abab rhyme scheme, specifying number of lines and syllables")
 
-    #vector_model = gensim.models.Word2Vec(filtered_tokens, min_count = 5)
-    #vector_model.save("w2v_whitman.model")
-    vector_model = Word2Vec.load("w2v_whitman.model")
+    selection = input()
+    if selection == "1":
+        print_poem(haiku(lm))
+    elif selection == "2":
+        print("Please enter the number of lines desired: ")
+        lines = input()
+        if (not lines.isdigit()):
+            print("invalid entry")
+        else:
+            print_poem(poem_search(lm, int(lines)))
+    elif selection == "3":
+        print("Please enter the number of lines desired: ")
+        lines = input()
+        print("Please enter the number of syllables desired: ")
+        syls = input()
+        if (not lines.isdigit()) or (not syls.isdigit()):
+            print("invalid entry")
+        else:
+            print_poem(poem_search_syl(lm, int(syls), int(lines)))
+    elif selection == "4":
+        print("Please enter the number of lines desired: ")
+        lines = input()
+        print("Please enter the number of syllables desired: ")
+        syls = input()
+        if (not lines.isdigit()) or (not syls.isdigit()):
+            print("invalid entry")
+        else:
+            print_poem(poem_search_syl_abab(lm, int(syls), int(lines)))
+    else:
+        print("invalid entry")
 
-    print_poem(haiku(lm))
-    print()
-    print_poem(poem_search(lm, 5))
-    print()
-    print_poem(poem_search_syl(lm, 10, 5))
-    print()
-    print_poem(poem_search_syl_abab(lm, 10, 2))
-    print()
-    print_poem(poem_search_theme(lm, 10, 5, vector_model))
-    print()
-    print_poem(poem_search_theme_rhyme(lm, 10, 3, vector_model))
-    print()
-    print(datetime.datetime.now() - start_time)
-if __name__ == "__main__": main()
+    # Old test procedure
+
+    # start_time = datetime.datetime.now()
+    # print(start_time)
+    # file = "Whitman.txt"
+    # sent_tokens = tokenize_text(file)
+    # # sent_tokens = clean_sents(brown.sents(categories = "news"))
+
+    # train, vocab = padded_everygram_pipeline(4, sent_tokens)
+    # lm = MLE(4)
+    # lm.fit(train, vocab)
+
+    # # stop_words = set(stopwords.words('english'))
+    # # word_tokens = []
+    # # filtered_tokens = []
+    # # for sent in sent_tokens:
+    # #     new_sent = []
+    # #     for word in sent:
+    # #         word_tokens.append(word)
+    # #         if word not in stop_words:
+    # #             new_sent.append(word)
+    # #         filtered_tokens.append(new_sent)
+
+    # # vector_model = gensim.models.Word2Vec(filtered_tokens, min_count = 5)
+    # # vector_model.save("w2v_whitman.model")
+    # vector_model = Word2Vec.load("w2v_whitman.model")
+
+    # print_poem(haiku(lm))
+    # print()
+    # print_poem(poem_search(lm, 5))
+    # print()
+    # print_poem(poem_search_syl(lm, 10, 5))
+    # print()
+    # print_poem(poem_search_syl_abab(lm, 10, 2))
+    # print()
+    # print_poem(poem_search_theme(lm, 10, 5, vector_model))
+    # print()
+    # print_poem(poem_search_theme_rhyme(lm, 10, 3, vector_model))
+    # print()
+    # print(datetime.datetime.now() - start_time)
+
+
+if __name__ == "__main__":
+    main()
